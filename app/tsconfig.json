@@ -1,0 +1,13 @@
+{
+  "extends": "@tsconfig/node14/tsconfig.json",
+  "compilerOptions": {
+    "declaration": true,
+    "esModuleInterop": true,
+    "outDir": "dist",
+    "sourceMap": true
+  },
+  "include": [
+    "src"
+  ],
+  "compileOnSave": false
+}

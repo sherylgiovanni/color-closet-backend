@@ -1,0 +1,261 @@
+name: Deploy
+
+on:
+  push:
+    branches: [dev, stg, main]
+env:
+  node_version: "14.x"
+  tf_version: "1.0.11" # must match value in iac/*/app/main.tf
+  FORCE_COLOR: 3
+
+concurrency: ${{ github.ref }}
+jobs:
+  env:
+    name: Set Env Vars
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up DEV Environment Variables
+        if: github.ref == 'refs/heads/dev'
+        run: |
+          matrix='{
+            "env":[
+              {
+                "environment_name":"dev",
+                "ecr_repo_name":"sg738-fav-color-dev",
+                "tf_working_dir":"./iac/dev/app",
+                "aws_key_name":"byu_oit_fullstack_trn_key",
+                "aws_secret_name":"byu_oit_fullstack_trn_secret",
+                "rfc_key_name":"standard_change_sandbox_client_key",
+                "rfc_secret_name":"standard_change_sandbox_client_secret",
+                "rfc_template_id":"Codepipeline-Standard-Change",
+                "slack_channel":"slack-bot-testing"
+              }
+            ]
+          }'
+          echo matrix=`echo $matrix | jq -c .` >> $GITHUB_ENV
+
+      - name: Set up STG Environment Variables
+        if: github.ref == 'refs/heads/stg'
+        run: |
+          matrix='{
+            "env":[
+              {
+                "environment_name":"stg",
+                "ecr_repo_name":"sg738-fav-color-stg",
+                "tf_working_dir":"./iac/stg/app",
+                "aws_key_name":"byu_oit_fullstack_trn_key",
+                "aws_secret_name":"byu_oit_fullstack_trn_secret",
+                "rfc_key_name":"standard_change_sandbox_client_key",
+                "rfc_secret_name":"standard_change_sandbox_client_secret",
+                "rfc_template_id":"Codepipeline-Standard-Change",
+                "slack_channel":"slack-bot-testing"
+              }
+            ]
+          }'
+          echo matrix=`echo $matrix | jq -c .` >> $GITHUB_ENV
+
+      - name: Set up PRD/CPY Environment Variables
+        if: github.ref == 'refs/heads/main'
+        # TODO: When prd really is production, in prd environment (first block below):
+        # * Change standard_change_sandbox_client_key to standard_change_production_client_key
+        # * Change standard_change_sandbox_client_secret to standard_change_production_client_secret
+        # You probably don't want to do this in cpy (second block), or you will get two RFCs everytime you push to main
+        run: |
+          matrix='{
+            "env":[
+              {
+                "environment_name":"prd",
+                "ecr_repo_name":"sg738-fav-color-prd",
+                "tf_working_dir":"./iac/prd/app",
+                "aws_key_name":"byu_oit_fullstack_trn_key",
+                "aws_secret_name":"byu_oit_fullstack_trn_secret",
+                "rfc_key_name":"standard_change_sandbox_client_key",
+                "rfc_secret_name":"standard_change_sandbox_client_secret",
+                "rfc_template_id":"Codepipeline-Standard-Change",
+                "slack_channel":"slack-bot-testing"
+              },
+              {
+                "environment_name":"cpy",
+                "ecr_repo_name":"sg738-fav-color-cpy",
+                "tf_working_dir":"./iac/cpy/app",
+                "aws_key_name":"byu_oit_fullstack_trn_key",
+                "aws_secret_name":"byu_oit_fullstack_trn_secret",
+                "rfc_key_name":"standard_change_sandbox_client_key",
+                "rfc_secret_name":"standard_change_sandbox_client_secret",
+                "rfc_template_id":"Codepipeline-Standard-Change",
+                "slack_channel":"slack-bot-testing"
+              },
+          {
+                "environment_name":"dev",
+                "ecr_repo_name":"sg738-fav-color-dev",
+                "tf_working_dir":"./iac/dev/app",
+                "aws_key_name":"byu_oit_fullstack_trn_key",
+                "aws_secret_name":"byu_oit_fullstack_trn_secret",
+                "rfc_key_name":"standard_change_sandbox_client_key",
+                "rfc_secret_name":"standard_change_sandbox_client_secret",
+                "rfc_template_id":"Codepipeline-Standard-Change",
+                "slack_channel":"slack-bot-testing"
+              }
+            ]
+          }'
+          echo matrix=`echo $matrix | jq -c .` >> $GITHUB_ENV
+
+    outputs:
+      matrix: ${{ env.matrix }}
+
+  build_and_deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    needs: env
+    strategy:
+      matrix: ${{ fromJson(needs.env.outputs.matrix) }}
+      fail-fast: false
+    environment:
+      name: ${{ matrix.env.environment_name }}
+      url: https://${{ steps.url.outputs.stdout }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ env.node_version }}
+          cache: npm
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Audit
+        working-directory: app
+        run: npm audit --audit-level=critical
+
+      - name: Build
+        working-directory: app
+        run: npm ci --prefer-offline
+
+      - name: Lint
+        working-directory: app
+        run: npm run lint
+
+      - name: Test
+        working-directory: app
+        run: npm test
+
+      - name: Report test coverage to Codecov
+        uses: codecov/codecov-action@v2
+        if: env.CODECOV_TOKEN
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets[matrix.env.aws_key_name] }}
+          aws-secret-access-key: ${{ secrets[matrix.env.aws_secret_name] }}
+          aws-region: us-west-2
+
+      - name: Log into Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Get Current Timestamp
+        id: date
+        run: echo "::set-output name=timestamp::$(date +'%Y-%m-%d_%H-%M-%S')"
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build and push the Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPO: ${{ matrix.env.ecr_repo_name }}
+          IMAGE_TAG: ${{ steps.date.outputs.timestamp }}
+        uses: docker/build-push-action@v2
+        with:
+          context: app
+          push: true
+          tags: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO}}:${{ env.IMAGE_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha
+
+      - name: Terraform Setup
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: ${{ env.tf_version }}
+
+      - name: Terraform Init
+        working-directory: ${{ matrix.env.tf_working_dir }}
+        run: terraform init
+
+      - name: Terraform Format
+        working-directory: "./"
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Plan
+        working-directory: ${{ matrix.env.tf_working_dir }}
+        run: terraform plan -var 'image_tag=${{ steps.date.outputs.timestamp }}' -input=false -out=plan
+
+      - name: Analyze Terraform Plan
+        uses: byu-oit/github-action-tf-plan-analyzer@v2
+        with:
+          working-directory: ${{ matrix.env.tf_working_dir }}
+          terraform-plan-file: plan
+          divvycloud-username: ${{ secrets.DIVVYCLOUD_USERNAME }}
+          divvycloud-password: ${{ secrets.DIVVYCLOUD_PASSWORD }}
+
+      - name: Start Standard Change
+        uses: byu-oit/github-action-start-standard-change@v1
+        id: start-standard-change
+        with:
+          client-key: ${{ secrets[matrix.env.rfc_key_name] }}
+          client-secret: ${{ secrets[matrix.env.rfc_secret_name] }}
+          template-id: ${{ matrix.env.rfc_template_id }}
+
+      - name: Terraform Apply
+        working-directory: ${{ matrix.env.tf_working_dir }}
+        run: terraform apply plan
+
+      - name: Get CD App Name
+        id: cd-app-name
+        working-directory: ${{ matrix.env.tf_working_dir }}
+        run: terraform output -json codedeploy_app_name | tr -d '"'
+
+      - name: Get CD Deployment Group Name
+        id: cd-group-name
+        working-directory: ${{ matrix.env.tf_working_dir }}
+        run: terraform output -json codedeploy_deployment_group_name | tr -d '"'
+
+      - name: Get CD Appspec File
+        id: cd-appspec-file
+        working-directory: ${{ matrix.env.tf_working_dir }}
+        run: terraform output -json codedeploy_appspec_json_file | tr -d '"'
+
+      - name: Get URL
+        id: url
+        working-directory: ${{ matrix.env.tf_working_dir }}
+        run: terraform output -json url | tr -d '"'
+
+      - name: CodeDeploy
+        id: deploy
+        uses: byu-oit/github-action-codedeploy@v1
+        with:
+          application-name: ${{ steps.cd-app-name.outputs.stdout }}
+          deployment-group-name: ${{ steps.cd-group-name.outputs.stdout }}
+          appspec-file: ${{ steps.cd-appspec-file.outputs.stdout }}
+
+      - name: End Standard Change
+        uses: byu-oit/github-action-end-standard-change@v1
+        if: always() && steps.start-standard-change.outcome == 'success' # Run if RFC started, even if the deploy failed
+        with:
+          client-key: ${{ secrets[matrix.env.rfc_key_name] }}
+          client-secret: ${{ secrets[matrix.env.rfc_secret_name] }}
+          change-sys-id: ${{ steps.start-standard-change.outputs.change-sys-id }}
+          work-start: ${{ steps.start-standard-change.outputs.work-start }}
+          success: ${{ job.status == 'success' }}
+
+      - name: Send Slack Notification
+        uses: byu-oit/github-action-slack@v1
+        if: always()
+        with:
+          status: ${{ job.status }}
+          channel: ${{ matrix.env.slack_channel }}
+          webhook-url: ${{ secrets.slack_webhook_url }}

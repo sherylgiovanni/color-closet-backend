@@ -1,0 +1,14 @@
+{
+  "generator-fullstack-app": {
+    "appName": "sg738-fav-color",
+    "repoName": "my-byu-app",
+    "awsAccountDev": "byu-oit-fullstack-trn",
+    "awsAccountPrd": "byu-oit-fullstack-trn",
+    "awsAccountDevNumber": "863362256468",
+    "awsAccountPrdNumber": "863362256468",
+    "slackChannel": "slack-bot-testing",
+    "confirmStandardChangeTemplate": false,
+    "standardChangeTemplate": "Codepipeline-Standard-Change",
+    "template": "fargate-api"
+  }
+}

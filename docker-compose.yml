@@ -1,0 +1,28 @@
+version: '3'
+services:
+  dynamodb-local:
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
+    image: "amazon/dynamodb-local:latest"
+    container_name: dynamodb-local
+    ports:
+      - "8000:8000"
+    volumes:
+      - "./docker/dynamodb:/home/dynamodblocal/data"
+    working_dir: /home/dynamodblocal
+  app:
+    build: app
+    ports:
+    - 8080:8080
+    depends_on:
+      - dynamodb-local
+    links:
+      - dynamodb-local
+    environment:
+      NODE_ENV: local
+    env_file:
+      - .env
+    volumes:
+      - "C:/Users/sg738/.aws:/home/app/.aws:ro"
+
+# You can include a postgres docker image to mimic your relational RDS database locally
+# or use the amazon/dynamodb-local image to mimic a dynamo db table locally

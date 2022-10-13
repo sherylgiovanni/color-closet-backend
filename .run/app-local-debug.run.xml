@@ -1,0 +1,13 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="app-local-debug" type="NodeJSConfigurationType" node-parameters="-r ts-node/register -r dotenv/config --trace-deprecation" path-to-js-file="src/index.ts" working-dir="$PROJECT_DIR$/app">
+    <envs>
+      <env name="AWS_REGION" value="us-west-2" />
+      <env name="DYNAMODB_ENDPOINT" value="http://localhost:8000" />
+      <env name="dynamodb_table_name" value="sg738-fav-color-dev" />
+      <env name="AWS_SECRET_ACCESS_KEY" value="DUMMYEXAMPLEKEY" />
+      <env name="AWS_ACCESS_KEY_ID" value="DUMMYIDEXAMPLE" />
+      <env name="DB_TABLE_NAME" value="sg738-fav-color-dev" />
+    </envs>
+    <method v="2" />
+  </configuration>
+</component>

@@ -1,0 +1,73 @@
+{
+  "name": "fullstack-fargate-api",
+  "version": "1.0.0",
+  "description": "Example of creating and deploying an API with Docker and Terraform on AWS",
+  "author": "",
+  "license": "Apache-2.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "npm run clean && tsc && npm run copy",
+    "clean": "rimraf dist",
+    "copy": "cpy src/v1.yml dist/ --flat",
+    "dev": "ts-node -r dotenv/config src/index.ts",
+    "lint": "eslint .",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.121.0",
+    "@aws-sdk/lib-dynamodb": "^3.121.0",
+    "@byu-oit/express-logger": "^0.3.6",
+    "@byu-oit/logger": "^0.3.13",
+    "byu-jwt": "^3.1.2",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "openapi-enforcer": "^1.15.5",
+    "openapi-enforcer-middleware": "^2.0.2",
+    "pino": "^7.5.0"
+  },
+  "devDependencies": {
+    "@tsconfig/node14": "^1.0.1",
+    "@types/cors": "^2.8.12",
+    "@types/express": "^4.17.13",
+    "@types/jest": "^27.0.3",
+    "@types/supertest": "^2.0.11",
+    "cpy-cli": "^4.1.0",
+    "dotenv": "^10.0.0",
+    "eslint": "^7.18.0",
+    "jest": "^27.4.2",
+    "rimraf": "^3.0.2",
+    "snazzy": "^9.0.0",
+    "standard": "^16.0.4",
+    "supertest": "^6.1.6",
+    "ts-jest": "^27.0.7",
+    "ts-node": "^10.4.0",
+    "ts-standard": "^11.0.0",
+    "typescript": "4.4.4"
+  },
+  "jest": {
+    "collectCoverage": true,
+    "coverageDirectory": "coverage",
+    "coverageReporters": [
+      "lcov",
+      "text"
+    ],
+    "passWithNoTests": true,
+    "testEnvironment": "node",
+    "verbose": true,
+    "preset": "ts-jest"
+  },
+  "standard": {
+    "env": {
+      "jest": true,
+      "node": true
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/byu-oit/fullstack-fargate-api.git"
+  },
+  "bugs": {
+    "url": "https://github.com/byu-oit/fullstack-fargate-api/issues"
+  },
+  "homepage": "https://github.com/byu-oit/fullstack-fargate-api#readme"
+}

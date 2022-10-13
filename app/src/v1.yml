@@ -1,0 +1,116 @@
+openapi: 3.0.3
+info:
+  title: sg738-fav-color
+  description: A favorite color API to pass off back end training.
+  version: 1.0.0
+
+paths:
+  /:
+    x-controller: main
+    get:
+      summary: List favorite colors
+      x-operation: listFavoriteColors
+      responses:
+        200:
+          description: PersonFavoriteColor[]
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonFavoriteColor'
+    post:
+      description: Add a new student's favorite color
+      x-operation: addFavoriteColor
+      requestBody:
+        description: byuId, favoriteColor
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/favoriteColorObjectWithId'
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/successfulResponse'
+  /{byuId}:
+    x-controller: byuId
+    parameters:
+    - $ref : '#/components/parameters/byuIdParam'
+    get:
+      description: Get student's favorite color
+      x-operation: getFavoriteColor
+      responses:
+        200:
+          description: PersonFavoriteColor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/favoriteColorObject'
+    put:
+      description: Update student's favorite color
+      x-operation: updateFavoriteColor
+      requestBody:
+        description: favoriteColor
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/favoriteColorObject'
+      responses:
+        200:
+          description: successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/successfulResponse'
+    delete:
+      description: Remove student's favorite color
+      x-operation: removeFavoriteColor
+      responses:
+        200:
+          description: successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/successfulResponse'
+components:
+  schemas:
+    PersonFavoriteColor:
+      type: array
+      items:
+        $ref: '#/components/schemas/favoriteColorObjectWithId'
+    favoriteColor:
+      type: string
+      example: 'green'
+    favoriteColorObject:
+      type: object
+      properties:
+        favoriteColor:
+          $ref: '#/components/schemas/favoriteColor'
+    favoriteColorObjectWithId:
+      type: object
+      properties:
+        byuId:
+          $ref: '#/components/schemas/byuId'
+        favoriteColor:
+          $ref: '#/components/schemas/favoriteColor'
+    successfulResponse:
+      type: object
+      properties:
+        result:
+          type: string
+          example: 'success'
+    byuId:
+      type: string
+      example: '123456789'
+  parameters:
+    byuIdParam:
+      name: byuId
+      in: path
+      description: a BYU Id
+      required: true
+      schema:
+        type: string
+        pattern: '^\d{9}$'
